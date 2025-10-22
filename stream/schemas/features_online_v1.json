@@ -1,0 +1,108 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["event_id", "entity_id", "timestamp", "features_version"],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Original event identifier"
+    },
+    "entity_id": {
+      "type": "string",
+      "description": "Account or user identifier"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Feature computation timestamp"
+    },
+    "amount": {
+      "type": "number",
+      "description": "Transaction or claim amount"
+    },
+    "currency": {
+      "type": "string",
+      "description": "Currency code"
+    },
+    "channel": {
+      "type": "string",
+      "description": "Transaction channel"
+    },
+    "velocity_1h": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of transactions in last hour"
+    },
+    "velocity_24h": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of transactions in last 24 hours"
+    },
+    "velocity_7d": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of transactions in last 7 days"
+    },
+    "ip_risk": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "IP address risk score"
+    },
+    "ip_geolocation": {
+      "type": "object",
+      "properties": {
+        "country": {"type": "string"},
+        "region": {"type": "string"},
+        "city": {"type": "string"},
+        "latitude": {"type": "number"},
+        "longitude": {"type": "number"}
+      }
+    },
+    "geo_distance_km": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Distance from usual location in kilometers"
+    },
+    "merchant_risk": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Merchant risk score"
+    },
+    "merchant_category": {
+      "type": "string",
+      "description": "Merchant category code"
+    },
+    "age_days": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Account age in days"
+    },
+    "device_fingerprint": {
+      "type": "string",
+      "description": "Device fingerprint hash"
+    },
+    "session_id": {
+      "type": "string",
+      "description": "Session identifier"
+    },
+    "user_agent_hash": {
+      "type": "string",
+      "description": "Hashed user agent"
+    },
+    "features_version": {
+      "type": "string",
+      "description": "Feature schema version"
+    },
+    "feature_metadata": {
+      "type": "object",
+      "properties": {
+        "computation_time_ms": {"type": "number"},
+        "cache_hit": {"type": "boolean"},
+        "data_freshness_minutes": {"type": "number"}
+      }
+    }
+  }
+}

@@ -1,0 +1,60 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'fraudops-gateway'
+    static_configs:
+      - targets: ['gateway:8080']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+
+  - job_name: 'fraudops-model-monitor'
+    static_configs:
+      - targets: ['model-monitor-svc:8007']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+
+  - job_name: 'fraudops-ingest'
+    static_configs:
+      - targets: ['ingest-svc:8001']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+
+  - job_name: 'fraudops-feature'
+    static_configs:
+      - targets: ['feature-svc:8002']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+
+  - job_name: 'fraudops-score'
+    static_configs:
+      - targets: ['score-svc:8003']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+
+  - job_name: 'fraudops-decision'
+    static_configs:
+      - targets: ['decision-svc:8004']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+
+  - job_name: 'fraudops-case'
+    static_configs:
+      - targets: ['case-svc:8005']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+
+  - job_name: 'fraudops-audit'
+    static_configs:
+      - targets: ['audit-svc:8006']
+    metrics_path: '/metrics'
+    scrape_interval: 5s

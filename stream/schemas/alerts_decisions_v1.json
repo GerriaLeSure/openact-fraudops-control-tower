@@ -1,0 +1,53 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["event_id", "risk", "action", "policy", "reasons"],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Original event identifier"
+    },
+    "risk": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Final risk score"
+    },
+    "action": {
+      "type": "string",
+      "enum": ["allow", "hold", "block", "escalate"],
+      "description": "Decision action"
+    },
+    "policy": {
+      "type": "string",
+      "description": "Policy version used"
+    },
+    "reasons": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Array of reason codes"
+    },
+    "case_id": {
+      "type": "string",
+      "description": "Associated case identifier if created"
+    },
+    "watchlist_hits": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Watchlist matches"
+    },
+    "velocity_anomaly": {
+      "type": "boolean",
+      "description": "Velocity anomaly detected"
+    },
+    "graph_anomaly": {
+      "type": "boolean",
+      "description": "Graph-based anomaly detected"
+    },
+    "decision_time_ms": {
+      "type": "number",
+      "description": "Decision computation time"
+    }
+  }
+}

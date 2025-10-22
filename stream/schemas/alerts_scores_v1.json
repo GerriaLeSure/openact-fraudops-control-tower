@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["event_id", "scores", "model_version"],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Original event identifier"
+    },
+    "scores": {
+      "type": "object",
+      "required": ["xgb", "nn", "rules", "ensemble", "calibrated"],
+      "properties": {
+        "xgb": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "XGBoost model score"
+        },
+        "nn": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Neural network model score"
+        },
+        "rules": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Rule-based score"
+        },
+        "ensemble": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Weighted ensemble score"
+        },
+        "calibrated": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Platt-calibrated final score"
+        }
+      }
+    },
+    "explain": {
+      "type": "object",
+      "properties": {
+        "top_features": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": [
+              {"type": "string"},
+              {"type": "number"}
+            ],
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "description": "Top contributing features with SHAP values"
+        },
+        "feature_importance": {
+          "type": "object",
+          "description": "Feature importance scores"
+        }
+      }
+    },
+    "model_version": {
+      "type": "string",
+      "description": "Model version identifier"
+    },
+    "computation_time_ms": {
+      "type": "number",
+      "description": "Model computation time in milliseconds"
+    }
+  }
+}

@@ -1,0 +1,126 @@
+version: "3.9"
+
+name: openact-fraudops
+
+services:
+  zookeeper:
+    image: bitnami/zookeeper:3.9
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    ports: ["2181:2181"]
+    healthcheck:
+      test: ["CMD", "bash", "-c", 'echo ruok | nc -w 2 localhost 2181 | grep imok']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  kafka:
+    image: bitnami/kafka:3.7
+    depends_on: [zookeeper]
+    environment:
+      - KAFKA_ENABLE_KRAFT=no
+      - KAFKA_BROKER_ID=1
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_LISTENERS=PLAINTEXT://:9092
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - ALLOW_PLAINTEXT_LISTENER=yes
+    ports: ["9092:9092"]
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server kafka:9092 --list || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+
+  redis:
+    image: redis:7
+    ports: ["6379:6379"]
+
+  postgres:
+    image: postgres:16
+    environment:
+      - POSTGRES_USER=${PG_USER:-fraudops}
+      - POSTGRES_PASSWORD=${PG_PASSWORD:-fraudops}
+      - POSTGRES_DB=${PG_DB:-fraudops}
+    ports: ["5432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  mongo:
+    image: mongo:7
+    ports: ["27017:27017"]
+    volumes:
+      - mongodata:/data/db
+
+  minio:
+    image: minio/minio:RELEASE.2024-08-17T01-24-54Z
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_USER:-minio}
+      - MINIO_ROOT_PASSWORD=${MINIO_PASS:-minio123}
+    ports: ["9000:9000", "9001:9001"]
+    volumes:
+      - miniodata:/data
+
+  # --- Services ---
+  score-svc:
+    build: ./services/score-svc
+    environment:
+      - ENSEMBLE_WEIGHTS=0.5,0.4,0.1
+    ports: ["8002:8000"]
+    depends_on: [kafka]
+
+  decision-svc:
+    build: ./services/decision-svc
+    environment:
+      - BLOCK_THRESHOLD=0.90
+      - HOLD_THRESHOLD=0.70
+      - TRUSTED_CHANNELS=mobile
+    ports: ["8003:8000"]
+
+  case-svc:
+    build: ./services/case-svc
+    environment:
+      - MONGO_URI=mongodb://mongo:27017
+      - DB_NAME=fraudops
+    ports: ["8004:8000"]
+    depends_on: [mongo]
+
+  model-monitor-svc:
+    build: ./services/model-monitor-svc
+    environment:
+      - PG_DSN=postgresql+psycopg://fraudops:fraudops@postgres:5432/fraudops
+    ports: ["8005:8000"]
+    depends_on: [postgres]
+
+  analytics-svc:
+    build: ./services/analytics-svc
+    environment:
+      - MONGO_URI=mongodb://mongo:27017
+      - DB_NAME=fraudops
+    ports: ["8006:8000"]
+    depends_on: [mongo]
+
+  gateway:
+    build: ./services/gateway
+    environment:
+      - JWT_SECRET=${JWT_SECRET:-change-me}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:5173}
+      - SCORE_URL=http://score-svc:8000
+      - DECISION_URL=http://decision-svc:8000
+      - CASE_URL=http://case-svc:8000
+      - MONITOR_URL=http://model-monitor-svc:8000
+      - ANALYTICS_URL=http://analytics-svc:8000
+    ports: ["8001:8000"]
+    depends_on: [score-svc, decision-svc, case-svc, model-monitor-svc, analytics-svc]
+
+  ui:
+    build: ./ui/web
+    environment:
+      - VITE_API_BASE=http://localhost:8001
+    ports: ["5173:5173"]
+    depends_on: [gateway]
+
+volumes:
+  pgdata:
+  mongodata:
+  miniodata:
