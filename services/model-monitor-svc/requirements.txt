@@ -3,5 +3,5 @@ uvicorn[standard]==0.30.6
 prometheus-client==0.20.0
 pydantic==2.9.2
 pydantic-settings==2.4.0
-mlflow==2.8.1
+mlflow==3.5.0rc0
 wandb==0.16.0
