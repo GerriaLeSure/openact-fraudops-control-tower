@@ -1,0 +1,1 @@
+# Score service tests package

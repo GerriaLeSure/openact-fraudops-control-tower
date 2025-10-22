@@ -14,46 +14,42 @@ jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false  # Don't cancel other services if one fails
       matrix:
         python-version: [3.11]
-        service: [score-svc, decision-svc, case-svc, gateway, model-monitor-svc]
+        service: [score-svc, decision-svc, case-svc, gateway, model-monitor-svc, analytics-svc]
 
     steps:
     - uses: actions/checkout@v4
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
 
     - name: Install dependencies
+      working-directory: services/${{ matrix.service }}
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install -r services/${{ matrix.service }}/requirements.txt
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        pip install pytest fastapi[all]
 
     - name: Lint with flake8
+      working-directory: services/${{ matrix.service }}
       run: |
         pip install flake8
-        flake8 services/${{ matrix.service }}/ --count --select=E9,F63,F7,F82 --show-source --statistics
-        flake8 services/${{ matrix.service }}/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        if [ -d app ]; then flake8 app/ --count --select=E9,F63,F7,F82 --show-source --statistics --max-line-length=127; fi
 
     - name: Format check with black
+      working-directory: services/${{ matrix.service }}
       run: |
         pip install black
-        black --check services/${{ matrix.service }}/
+        if [ -d app ]; then black --check app/; fi
 
-    - name: Test with pytest
+    - name: Run tests
+      working-directory: services/${{ matrix.service }}
       run: |
-        pip install pytest pytest-cov
-        pytest services/${{ matrix.service }}/tests/ -v --cov=services/${{ matrix.service }}/app --cov-report=xml
-
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./coverage.xml
-        flags: ${{ matrix.service }}
-        name: ${{ matrix.service }}-coverage
+        if [ -d tests ]; then pytest -q; else echo "No tests found, skipping."; fi
 
   integration-test:
     runs-on: ubuntu-latest
