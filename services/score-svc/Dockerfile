@@ -1,11 +1,13 @@
 FROM python:3.11-slim
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
+# Install system dependencies and upgrade packages
+RUN apt-get update && apt-get upgrade -y && apt-get install -y \
     gcc \
     g++ \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install Python dependencies
@@ -17,6 +19,10 @@ COPY app/ ./app/
 
 # Create models directory
 RUN mkdir -p models
+
+# non-root user
+RUN useradd -m appuser && chown -R appuser:appuser /app
+USER appuser
 
 # Expose port
 EXPOSE 8000

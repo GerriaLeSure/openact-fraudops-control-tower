@@ -1,83 +1,145 @@
 name: Security Scan
 
 on:
-  schedule:
-    - cron: '0 2 * * 1'  # Weekly on Monday at 2 AM
   push:
     branches: [ main ]
   pull_request:
-    branches: [ main ]
+
+permissions:
+  contents: read
+  security-events: write   # required to upload SARIF
+  actions: read
 
 jobs:
-  dependency-scan:
+  secrets-scan:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install safety bandit
-    
-    - name: Run Safety check
-      run: |
-        safety check --json --output safety-report.json || true
-    
-    - name: Run Bandit security linter
-      run: |
-        bandit -r services/ -f json -o bandit-report.json || true
-    
-    - name: Upload security reports
-      uses: actions/upload-artifact@v3
-      with:
-        name: security-reports
-        path: |
-          safety-report.json
-          bandit-report.json
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # scan full history if needed
+
+      # Use Gitleaks (fast, maintained). No BASE/HEAD issue.
+      - name: Scan for secrets (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        with:
+          redact: true
+          # optional: provide a config file to ignore false-positives
+          # config-path: .github/gitleaks.toml
+
+  dependency-scan:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [score-svc, decision-svc, gateway, case-svc, model-monitor-svc, analytics-svc]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install deps
+        working-directory: services/${{ matrix.service }}
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install pip-audit
+
+      - name: pip-audit
+        working-directory: services/${{ matrix.service }}
+        run: |
+          if [ -f requirements.txt ]; then pip-audit -r requirements.txt --strict; else echo "No Python deps here"; fi
 
   container-scan:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Build Docker images
-      run: |
-        for service in services/*/; do
-          service_name=$(basename "$service")
-          if [ -f "$service/Dockerfile" ]; then
-            docker build -t fraudops/$service_name:security-scan "$service"
-          fi
-        done
-    
-    - name: Run Trivy container scan
-      uses: aquasecurity/trivy-action@master
-      with:
-        image-ref: 'fraudops/'
-        format: 'sarif'
-        output: 'container-scan-results.sarif'
-    
-    - name: Upload container scan results
-      uses: github/codeql-action/upload-sarif@v2
-      if: always()
-      with:
-        sarif_file: 'container-scan-results.sarif'
+      - uses: actions/checkout@v4
 
-  secrets-scan:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-    
-    - name: Run TruffleHog OSS
-      uses: trufflesecurity/trufflehog@main
-      with:
-        path: ./
-        base: main
-        head: HEAD
-        extra_args: --debug --only-verified
+      # Build images to scan (adjust the list to match services with Dockerfiles)
+      - name: Build images
+        run: |
+          docker build -t openact/gateway:ci ./services/gateway
+          docker build -t openact/score:ci ./services/score-svc
+          docker build -t openact/decision:ci ./services/decision-svc
+          docker build -t openact/case:ci ./services/case-svc
+          docker build -t openact/monitor:ci ./services/model-monitor-svc
+          docker build -t openact/analytics:ci ./services/analytics-svc
+
+      # Trivy for each image → SARIF
+      - name: Trivy gateway
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: openact/gateway:ci
+          format: 'sarif'
+          output: 'trivy-gateway.sarif'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+
+      - name: Upload SARIF (gateway)
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-gateway.sarif
+
+      - name: Trivy score
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: openact/score:ci
+          format: 'sarif'
+          output: 'trivy-score.sarif'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+      - name: Upload SARIF (score)
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-score.sarif
+
+      - name: Trivy decision
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: openact/decision:ci
+          format: 'sarif'
+          output: 'trivy-decision.sarif'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+      - name: Upload SARIF (decision)
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-decision.sarif
+
+      - name: Trivy case
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: openact/case:ci
+          format: 'sarif'
+          output: 'trivy-case.sarif'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+      - name: Upload SARIF (case)
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-case.sarif
+
+      - name: Trivy monitor
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: openact/monitor:ci
+          format: 'sarif'
+          output: 'trivy-monitor.sarif'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+      - name: Upload SARIF (monitor)
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-monitor.sarif
+
+      - name: Trivy analytics
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: openact/analytics:ci
+          format: 'sarif'
+          output: 'trivy-analytics.sarif'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+      - name: Upload SARIF (analytics)
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-analytics.sarif

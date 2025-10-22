@@ -1,0 +1,10 @@
+[allowlist]
+description = "Allow common test keys / placeholders"
+regexTarget = "match"
+paths = [
+  '''^docs/''',
+]
+regexes = [
+  '''^REDACTED$''',
+  '''^(changeme|change-me|minio123)$''',
+]

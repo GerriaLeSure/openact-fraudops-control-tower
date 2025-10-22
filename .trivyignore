@@ -1,0 +1,2 @@
+# CVEs to ignore temporarily; track and patch ASAP
+# CVE-2024-XXXX  # transitive in python:3.11-slim, fixed in 3.11.x-slim-yyyy-mm
